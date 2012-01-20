@@ -1,27 +1,43 @@
 (function() {
-  var $, Ajax, Base, Collection, Extend, Include, Model, Singleton,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __slice = Array.prototype.slice;
-
-  if (typeof Spine === "undefined" || Spine === null) Spine = require('spine');
-
+  var $, Ajax, Base, Collection, Extend, Include, Model, Singleton;
+  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; }, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
+    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
+    function ctor() { this.constructor = child; }
+    ctor.prototype = parent.prototype;
+    child.prototype = new ctor;
+    child.__super__ = parent.prototype;
+    return child;
+  }, __slice = Array.prototype.slice;
+    if (typeof Spine !== "undefined" && Spine !== null) {
+    Spine;
+  } else {
+    Spine = require('spine');
+  };
   $ = Spine.$;
-
   Model = Spine.Model;
-
   Ajax = {
-    getURL: function(object) {
-      return object && (typeof object.url === "function" ? object.url() : void 0) || object.url;
+    getURL: function(object, needModel) {
+      var model;
+      if (object) {
+        if (needModel) {
+          model = object.constructor;
+          return (typeof model.url === "function" ? model.url(object) : void 0) || model.url;
+        } else {
+          return (typeof object.url === "function" ? object.url() : void 0) || object.url;
+        }
+      }
     },
     enabled: true,
     pending: false,
     requests: [],
     disable: function(callback) {
-      this.enabled = false;
-      callback();
-      return this.enabled = true;
+      if (this.enabled) {
+        this.enabled = false;
+        callback();
+        return this.enabled = true;
+      } else {
+        return callback();
+      }
     },
     requestNext: function() {
       var next;
@@ -33,13 +49,14 @@
       }
     },
     request: function(callback) {
-      var _this = this;
-      return (callback()).complete(function() {
-        return _this.requestNext();
-      });
+      return (callback()).complete(__bind(function() {
+        return this.requestNext();
+      }, this));
     },
     queue: function(callback) {
-      if (!this.enabled) return;
+      if (!this.enabled) {
+        return;
+      }
       if (this.pending) {
         this.requests.push(callback);
       } else {
@@ -49,11 +66,8 @@
       return callback;
     }
   };
-
   Base = (function() {
-
     function Base() {}
-
     Base.prototype.defaults = {
       contentType: 'application/json',
       dataType: 'json',
@@ -62,29 +76,21 @@
         'X-Requested-With': 'XMLHttpRequest'
       }
     };
-
     Base.prototype.ajax = function(params, defaults) {
       return $.ajax($.extend({}, this.defaults, defaults, params));
     };
-
     Base.prototype.queue = function(callback) {
       return Ajax.queue(callback);
     };
-
     return Base;
-
   })();
-
-  Collection = (function(_super) {
-
-    __extends(Collection, _super);
-
+  Collection = (function() {
+    __extends(Collection, Base);
     function Collection(model) {
       this.model = model;
       this.errorResponse = __bind(this.errorResponse, this);
       this.recordsResponse = __bind(this.recordsResponse, this);
     }
-
     Collection.prototype.find = function(id, params) {
       var record;
       record = new this.model({
@@ -95,134 +101,118 @@
         url: Ajax.getURL(record)
       }).success(this.recordsResponse).error(this.errorResponse);
     };
-
     Collection.prototype.all = function(params) {
+      var record;
+      record = new this.model({
+        id: id
+      });
       return this.ajax(params, {
         type: 'GET',
-        url: Ajax.getURL(this.model)
+        url: Ajax.getURL(record, true)
       }).success(this.recordsResponse).error(this.errorResponse);
     };
-
     Collection.prototype.fetch = function(params) {
-      var id,
-        _this = this;
-      if (params == null) params = {};
+      var id;
+      if (params == null) {
+        params = {};
+      }
       if (id = params.id) {
         delete params.id;
-        return this.find(id, params).success(function(record) {
-          return _this.model.refresh(record);
-        });
+        return this.find(id, params).success(__bind(function(record) {
+          return this.model.refresh(record);
+        }, this));
       } else {
-        return this.all(params).success(function(records) {
-          return _this.model.refresh(records);
-        });
+        return this.all(params).success(__bind(function(records) {
+          return this.model.refresh(records);
+        }, this));
       }
     };
-
     Collection.prototype.recordsResponse = function(data, status, xhr) {
       return this.model.trigger('ajaxSuccess', null, status, xhr);
     };
-
     Collection.prototype.errorResponse = function(xhr, statusText, error) {
       return this.model.trigger('ajaxError', null, xhr, statusText, error);
     };
-
     return Collection;
-
-  })(Base);
-
-  Singleton = (function(_super) {
-
-    __extends(Singleton, _super);
-
+  })();
+  Singleton = (function() {
+    __extends(Singleton, Base);
     function Singleton(record) {
       this.record = record;
       this.errorResponse = __bind(this.errorResponse, this);
       this.recordResponse = __bind(this.recordResponse, this);
       this.model = this.record.constructor;
     }
-
     Singleton.prototype.reload = function(params, options) {
-      var _this = this;
-      return this.queue(function() {
-        return _this.ajax(params, {
+      return this.queue(__bind(function() {
+        return this.ajax(params, {
           type: 'GET',
-          url: Ajax.getURL(_this.record)
-        }).success(_this.recordResponse(options)).error(_this.errorResponse(options));
-      });
+          url: Ajax.getURL(this.record)
+        }).success(this.recordResponse(options)).error(this.errorResponse(options));
+      }, this));
     };
-
     Singleton.prototype.create = function(params, options) {
-      var _this = this;
-      return this.queue(function() {
-        return _this.ajax(params, {
+      return this.queue(__bind(function() {
+        return this.ajax(params, {
           type: 'POST',
-          data: JSON.stringify(_this.record),
-          url: Ajax.getURL(_this.model)
-        }).success(_this.recordResponse(options)).error(_this.errorResponse(options));
-      });
+          data: JSON.stringify(this.record),
+          url: Ajax.getURL(this.record, true)
+        }).success(this.recordResponse(options)).error(this.errorResponse(options));
+      }, this));
     };
-
     Singleton.prototype.update = function(params, options) {
-      var _this = this;
-      return this.queue(function() {
-        return _this.ajax(params, {
+      return this.queue(__bind(function() {
+        return this.ajax(params, {
           type: 'PUT',
-          data: JSON.stringify(_this.record),
-          url: Ajax.getURL(_this.record)
-        }).success(_this.recordResponse(options)).error(_this.errorResponse(options));
-      });
+          data: JSON.stringify(this.record),
+          url: Ajax.getURL(this.record)
+        }).success(this.recordResponse(options)).error(this.errorResponse(options));
+      }, this));
     };
-
     Singleton.prototype.destroy = function(params, options) {
-      var _this = this;
-      return this.queue(function() {
-        return _this.ajax(params, {
+      return this.queue(__bind(function() {
+        return this.ajax(params, {
           type: 'DELETE',
-          url: Ajax.getURL(_this.record)
-        }).success(_this.recordResponse(options)).error(_this.errorResponse(options));
-      });
+          url: Ajax.getURL(this.record)
+        }).success(this.recordResponse(options)).error(this.errorResponse(options));
+      }, this));
     };
-
     Singleton.prototype.recordResponse = function(options) {
-      var _this = this;
-      if (options == null) options = {};
-      return function(data, status, xhr) {
+      if (options == null) {
+        options = {};
+      }
+      return __bind(function(data, status, xhr) {
         var _ref;
         if (Spine.isBlank(data)) {
           data = false;
         } else {
-          data = _this.model.fromJSON(data);
+          data = this.model.fromJSON(data);
         }
-        Ajax.disable(function() {
+        Ajax.disable(__bind(function() {
           if (data) {
-            if (data.id && _this.record.id !== data.id) {
-              _this.record.changeID(data.id);
+            if (data.id && this.record.id !== data.id) {
+              this.record.changeID(data.id);
             }
-            return _this.record.updateAttributes(data.attributes());
+            return this.record.updateAttributes(data.attributes());
           }
-        });
-        _this.record.trigger('ajaxSuccess', data, status, xhr);
-        return (_ref = options.success) != null ? _ref.apply(_this.record) : void 0;
-      };
+        }, this));
+        this.record.trigger('ajaxSuccess', data, status, xhr);
+        return (_ref = options.success) != null ? _ref.apply(this.record) : void 0;
+      }, this);
     };
-
     Singleton.prototype.errorResponse = function(options) {
-      var _this = this;
-      if (options == null) options = {};
-      return function(xhr, statusText, error) {
+      if (options == null) {
+        options = {};
+      }
+      return __bind(function(xhr, statusText, error) {
         var _ref;
-        _this.record.trigger('ajaxError', xhr, statusText, error);
-        return (_ref = options.error) != null ? _ref.apply(_this.record) : void 0;
-      };
+        this.record.trigger('ajaxError', xhr, statusText, error);
+        return (_ref = options.error) != null ? _ref.apply(this.record) : void 0;
+      }, this);
     };
-
     return Singleton;
-
-  })(Base);
-
+  })();
   Model.host = '';
-
   Include = {
     ajax: function() {
       return new Singleton(this);
@@ -230,27 +220,37 @@
     url: function() {
       var args, url;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      url = Ajax.getURL(this.constructor);
-      if (url.charAt(url.length - 1) !== '/') url += '/';
+      url = Ajax.getURL(this, true);
+      if (url.charAt(url.length - 1) !== '/') {
+        url += '/';
+      }
       url += encodeURIComponent(this.id);
       args.unshift(url);
       return args.join('/');
     }
   };
-
   Extend = {
     ajax: function() {
       return new Collection(this);
     },
     url: function() {
-      var args;
+      var args, record;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      if (typeof args[0] === 'object') {
+        record = args.shift();
+      }
       args.unshift(this.className.toLowerCase() + 's');
+      if (record != null) {
+        if (typeof record.scope === 'function') {
+          args.unshift(record.scope());
+        } else if (typeof record.scope === 'string') {
+          args.unshift(record.scope);
+        }
+      }
       args.unshift(Model.host);
       return args.join('/');
     }
   };
-
   Model.Ajax = {
     extended: function() {
       this.fetch(this.ajaxFetch);
@@ -263,22 +263,24 @@
       return (_ref = this.ajax()).fetch.apply(_ref, arguments);
     },
     ajaxChange: function(record, type, options) {
-      if (options == null) options = {};
+      if (options == null) {
+        options = {};
+      }
+      if (options.ajax === false) {
+        return;
+      }
       return record.ajax()[type](options.ajax, options);
     }
   };
-
   Model.Ajax.Methods = {
     extended: function() {
       this.extend(Extend);
       return this.include(Include);
     }
   };
-
   Ajax.defaults = Base.prototype.defaults;
-
   Spine.Ajax = Ajax;
-
-  if (typeof module !== "undefined" && module !== null) module.exports = Ajax;
-
+  if (typeof module !== "undefined" && module !== null) {
+    module.exports = Ajax;
+  }
 }).call(this);
