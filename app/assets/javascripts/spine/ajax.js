@@ -16,16 +16,8 @@
   $ = Spine.$;
   Model = Spine.Model;
   Ajax = {
-    getURL: function(object, needModel) {
-      var model;
-      if (object) {
-        if (needModel) {
-          model = object.constructor;
-          return (typeof model.url === "function" ? model.url(object) : void 0) || model.url;
-        } else {
-          return (typeof object.url === "function" ? object.url() : void 0) || object.url;
-        }
-      }
+    getURL: function(object) {
+      return object && (typeof object.url === "function" ? object.url() : void 0) || object.url;
     },
     enabled: true,
     pending: false,
@@ -102,13 +94,9 @@
       }).success(this.recordsResponse).error(this.errorResponse);
     };
     Collection.prototype.all = function(params) {
-      var record;
-      record = new this.model({
-        id: id
-      });
       return this.ajax(params, {
         type: 'GET',
-        url: Ajax.getURL(record, true)
+        url: Ajax.getURL(this.model)
       }).success(this.recordsResponse).error(this.errorResponse);
     };
     Collection.prototype.fetch = function(params) {
@@ -156,7 +144,7 @@
         return this.ajax(params, {
           type: 'POST',
           data: JSON.stringify(this.record),
-          url: Ajax.getURL(this.record, true)
+          url: Ajax.getURL(this.model)
         }).success(this.recordResponse(options)).error(this.errorResponse(options));
       }, this));
     };
@@ -218,14 +206,15 @@
       return new Singleton(this);
     },
     url: function() {
-      var args, url;
+      var args, scope;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      url = Ajax.getURL(this, true);
-      if (url.charAt(url.length - 1) !== '/') {
-        url += '/';
+      args.unshift(encodeURIComponent(this.id));
+      args.unshift(this.className.toLowerCase() + 's');
+      scope = (typeof this.scope === "function" ? this.scope() : void 0) || this.scope;
+      if (scope != null) {
+        args.unshift(scope);
       }
-      url += encodeURIComponent(this.id);
-      args.unshift(url);
+      args.unshift(Model.host);
       return args.join('/');
     }
   };
@@ -234,18 +223,12 @@
       return new Collection(this);
     },
     url: function() {
-      var args, record;
+      var args, scope;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (typeof args[0] === 'object') {
-        record = args.shift();
-      }
       args.unshift(this.className.toLowerCase() + 's');
-      if (record != null) {
-        if (typeof record.scope === 'function') {
-          args.unshift(record.scope());
-        } else if (typeof record.scope === 'string') {
-          args.unshift(record.scope);
-        }
+      scope = (typeof this.scope === "function" ? this.scope() : void 0) || this.scope;
+      if (scope != null) {
+        args.unshift(scope);
       }
       args.unshift(Model.host);
       return args.join('/');
