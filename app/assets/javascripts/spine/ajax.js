@@ -209,7 +209,7 @@
       var args, scope;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       args.unshift(encodeURIComponent(this.id));
-      args.unshift(this.className.toLowerCase() + 's');
+      args.unshift(this.constructor.className.toLowerCase() + 's');
       scope = (typeof this.scope === "function" ? this.scope() : void 0) || this.scope;
       if (scope != null) {
         args.unshift(scope);
