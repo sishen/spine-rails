@@ -99,19 +99,22 @@
         url: Ajax.getURL(this.model)
       }).success(this.recordsResponse).error(this.errorResponse);
     };
-    Collection.prototype.fetch = function(params) {
+    Collection.prototype.fetch = function(params, options) {
       var id;
       if (params == null) {
         params = {};
       }
+      if (options == null) {
+        options = {};
+      }
       if (id = params.id) {
         delete params.id;
         return this.find(id, params).success(__bind(function(record) {
-          return this.model.refresh(record);
+          return this.model.refresh(record, options);
         }, this));
       } else {
         return this.all(params).success(__bind(function(records) {
-          return this.model.refresh(records);
+          return this.model.refresh(records, options);
         }, this));
       }
     };

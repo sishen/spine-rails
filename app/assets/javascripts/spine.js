@@ -169,10 +169,10 @@
     };
     Model.find = function(id) {
       var record;
-      if (("" + id).match(/c-\d+/)) {
+      record = this.records[id];
+      if (!record && ("" + id).match(/c-\d+/)) {
         return this.findCID(id);
       }
-      record = this.records[id];
       if (!record) {
         throw 'Unknown record';
       }
@@ -414,7 +414,7 @@
       return result;
     };
     Model.prototype.eql = function(rec) {
-      return rec && rec.constructor === this.constructor && (rec.id === this.id || rec.cid === this.cid);
+      return !!(rec && rec.constructor === this.constructor && (rec.id === this.id || rec.cid === this.cid));
     };
     Model.prototype.save = function(options) {
       var error, record;
@@ -580,6 +580,9 @@
       this.el = $(this.el);
       if (this.className) {
         this.el.addClass(this.className);
+      }
+      if (this.attributes) {
+        this.el.attr(this.attributes);
       }
       this.release(function() {
         return this.el.remove();
