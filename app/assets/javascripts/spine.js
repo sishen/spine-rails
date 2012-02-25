@@ -212,7 +212,7 @@
         this.records[record.id] = record;
         this.crecords[record.cid] = record;
       }
-      this.trigger('refresh', !options.clear && this.cloneArray(records));
+      this.trigger('refresh', this.cloneArray(records));
       return this;
     };
     Model.select = function(callback) {
