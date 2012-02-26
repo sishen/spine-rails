@@ -161,6 +161,7 @@
       }
       this.attributes && (this.attributes = makeArray(this.attributes));
       this.attributes || (this.attributes = []);
+      this.previousAttributes = [];
       this.unbind();
       return this;
     };
@@ -209,6 +210,7 @@
       for (_i = 0, _len = records.length; _i < _len; _i++) {
         record = records[_i];
         record.id || (record.id = record.cid);
+        record.previousAttributes = record.attributes();
         this.records[record.id] = record;
         this.crecords[record.cid] = record;
       }
@@ -431,11 +433,14 @@
       this.trigger('beforeSave', options);
       record = this.isNew() ? this.create(options) : this.update(options);
       this.trigger('save', options);
+      record.previousAttributes = record.attributes();
       return record;
     };
     Model.prototype.updateAttribute = function(name, value) {
-      this[name] = value;
-      return this.save();
+      var atts;
+      atts = {};
+      atts[name] = value;
+      return this.updateAttributes(atts);
     };
     Model.prototype.updateAttributes = function(atts, options) {
       this.load(atts);
