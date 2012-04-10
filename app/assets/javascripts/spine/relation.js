@@ -1,5 +1,5 @@
 (function() {
-  var Collection, Instance, Singleton, isArray, singularize, underscore;
+  var Collection, Instance, Singleton, Spine, isArray, require, singularize, underscore;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -8,19 +8,11 @@
     child.__super__ = parent.prototype;
     return child;
   }, __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  Spine = this.Spine || require('spine');
   isArray = Spine.isArray;
-    if (typeof require !== "undefined" && require !== null) {
-    require;
-  } else {
-    require = (function(value) {
-      return eval(value);
-    });
-  };
+  require = this.require || (function(value) {
+    return eval(value);
+  });
   Collection = (function() {
     __extends(Collection, Spine.Module);
     function Collection(options) {
@@ -58,7 +50,7 @@
     };
     Collection.prototype.findAllByAttribute = function(name, value) {
       return this.model.select(__bind(function(rec) {
-        return rec[name] === value;
+        return this.associated(rec) && rec[name] === value;
       }, this));
     };
     Collection.prototype.findByAttribute = function(name, value) {
@@ -86,7 +78,7 @@
         record[this.fkey] = this.record.id;
         this.model.records[record.id] = record;
       }
-      return this.model.trigger('refresh', records);
+      return this.model.trigger('refresh', this.model.cloneArray(records));
     };
     Collection.prototype.create = function(record) {
       record[this.fkey] = this.record.id;

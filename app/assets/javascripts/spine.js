@@ -212,6 +212,7 @@
         this.records[record.id] = record;
         this.crecords[record.cid] = record;
       }
+      this.resetIdCounter();
       this.trigger('refresh', this.cloneArray(records));
       return this;
     };
@@ -365,15 +366,37 @@
       return _results;
     };
     Model.idCounter = 0;
-    Model.uid = function() {
-      return this.idCounter++;
+    Model.resetIdCounter = function() {
+      var ids, lastID, model;
+      ids = ((function() {
+        var _i, _len, _ref, _results;
+        _ref = this.all();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          model = _ref[_i];
+          _results.push(model.id);
+        }
+        return _results;
+      }).call(this)).sort(function(a, b) {
+        return a > b;
+      });
+      lastID = ids[ids.length - 1];
+      lastID = (lastID != null ? typeof lastID.replace === "function" ? lastID.replace(/^c-/, '') : void 0 : void 0) || lastID;
+      lastID = parseInt(lastID, 10);
+      return this.idCounter = (lastID + 1) || 0;
+    };
+    Model.uid = function(prefix) {
+      if (prefix == null) {
+        prefix = '';
+      }
+      return prefix + this.idCounter++;
     };
     function Model(atts) {
       Model.__super__.constructor.apply(this, arguments);
       if (atts) {
         this.load(atts);
       }
-      this.cid || (this.cid = 'c-' + this.constructor.uid());
+      this.cid || (this.cid = this.constructor.uid('c-'));
     }
     Model.prototype.isNew = function() {
       return !this.exists();
@@ -414,7 +437,7 @@
       return result;
     };
     Model.prototype.eql = function(rec) {
-      return !!(rec && rec.constructor === this.constructor && (rec.id === this.id || rec.cid === this.cid));
+      return !!(rec && rec.constructor === this.constructor && (rec.cid === this.cid) || (rec.id && rec.id === this.id));
     };
     Model.prototype.save = function(options) {
       var error, record;
@@ -433,11 +456,9 @@
       this.trigger('save', options);
       return record;
     };
-    Model.prototype.updateAttribute = function(name, value) {
-      var atts;
-      atts = {};
-      atts[name] = value;
-      return this.updateAttributes(atts);
+    Model.prototype.updateAttribute = function(name, value, options) {
+      this[name] = value;
+      return this.save(options);
     };
     Model.prototype.updateAttributes = function(atts, options) {
       this.load(atts);
@@ -596,7 +617,7 @@
         this.elements = this.constructor.elements;
       }
       if (this.events) {
-        this.delegateEvents();
+        this.delegateEvents(this.events);
       }
       if (this.elements) {
         this.refreshElements();
@@ -613,12 +634,11 @@
     Controller.prototype.$ = function(selector) {
       return $(selector, this.el);
     };
-    Controller.prototype.delegateEvents = function() {
-      var eventName, key, match, method, selector, _ref, _results;
-      _ref = this.events;
+    Controller.prototype.delegateEvents = function(events) {
+      var eventName, key, match, method, selector, _results;
       _results = [];
-      for (key in _ref) {
-        method = _ref[key];
+      for (key in events) {
+        method = events[key];
         if (typeof method !== 'function') {
           method = this.proxy(this[method]);
         }
@@ -688,7 +708,7 @@
       var previous, _ref;
       _ref = [this.el, $(element.el || element)], previous = _ref[0], this.el = _ref[1];
       previous.replaceWith(this.el);
-      this.delegateEvents();
+      this.delegateEvents(this.events);
       this.refreshElements();
       return this.el;
     };
@@ -725,7 +745,7 @@
   if (typeof module !== "undefined" && module !== null) {
     module.exports = Spine;
   }
-  Spine.version = '1.0.5';
+  Spine.version = '1.0.6';
   Spine.isArray = isArray;
   Spine.isBlank = isBlank;
   Spine.$ = $;

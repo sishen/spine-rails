@@ -25,7 +25,7 @@
       this.bind('change', this.change);
     }
     List.prototype.template = function() {
-      return arguments[0];
+      throw 'Override template';
     };
     List.prototype.change = function(item) {
       this.current = item;
@@ -34,7 +34,7 @@
         return;
       }
       this.children().removeClass('active');
-      return this.children().forItem(this.current).addClass('active');
+      return $(this.children().get(this.items.indexOf(this.current))).addClass('active');
     };
     List.prototype.render = function(items) {
       if (items) {
@@ -53,7 +53,7 @@
     };
     List.prototype.click = function(e) {
       var item;
-      item = $(e.currentTarget).item();
+      item = this.items[$(e.currentTarget).index()];
       this.trigger('change', item);
       return true;
     };
