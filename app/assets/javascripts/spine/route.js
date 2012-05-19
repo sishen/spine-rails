@@ -1,5 +1,5 @@
 (function() {
-  var $, escapeRegExp, hashStrip, namedParam, splatParam;
+  var $, Spine, escapeRegExp, hashStrip, namedParam, splatParam;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -8,11 +8,7 @@
     child.__super__ = parent.prototype;
     return child;
   }, __slice = Array.prototype.slice;
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  Spine = this.Spine || require('spine');
   $ = Spine.$;
   hashStrip = /^#*/;
   namedParam = /:([\w\d]+)/g;

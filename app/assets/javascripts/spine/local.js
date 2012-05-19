@@ -1,9 +1,6 @@
 (function() {
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  var Spine;
+  Spine = this.Spine || require('spine');
   Spine.Model.Local = {
     extended: function() {
       this.change(this.saveLocal);

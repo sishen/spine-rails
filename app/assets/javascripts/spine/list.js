@@ -1,5 +1,5 @@
 (function() {
-  var $;
+  var $, Spine;
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; }, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -8,11 +8,7 @@
     child.__super__ = parent.prototype;
     return child;
   };
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  Spine = this.Spine || require('spine');
   $ = Spine.$;
   Spine.List = (function() {
     __extends(List, Spine.Controller);

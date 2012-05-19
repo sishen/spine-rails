@@ -1,5 +1,5 @@
 (function() {
-  var $;
+  var $, Spine;
   var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
     for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
     function ctor() { this.constructor = child; }
@@ -8,11 +8,7 @@
     child.__super__ = parent.prototype;
     return child;
   }, __slice = Array.prototype.slice, __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  Spine = this.Spine || require('spine');
   $ = Spine.$;
   Spine.Manager = (function() {
     __extends(Manager, Spine.Module);
@@ -128,5 +124,8 @@
   })();
   if (typeof module !== "undefined" && module !== null) {
     module.exports = Spine.Manager;
+  }
+  if (typeof module !== "undefined" && module !== null) {
+    module.exports.Stack = Spine.Stack;
   }
 }).call(this);

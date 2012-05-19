@@ -1,5 +1,5 @@
 (function() {
-  var $, Controller, Events, Log, Model, Module, Spine, isArray, isBlank, makeArray, moduleKeywords;
+  var $, Controller, Events, Log, Model, Module, Spine, createObject, isArray, isBlank, makeArray, moduleKeywords;
   var __slice = Array.prototype.slice, __indexOf = Array.prototype.indexOf || function(item) {
     for (var i = 0, l = this.length; i < l; i++) {
       if (this[i] === item) return i;
@@ -496,7 +496,7 @@
       return result;
     };
     Model.prototype.clone = function() {
-      return Object.create(this);
+      return createObject(this);
     };
     Model.prototype.reload = function() {
       var original;
@@ -569,7 +569,7 @@
       var binder;
       return binder = this.bind(events, __bind(function() {
         this.constructor.unbind(events, binder);
-        return callback.apply(this);
+        return callback.apply(this, arguments);
       }, this));
     };
     Model.prototype.trigger = function() {
@@ -607,9 +607,6 @@
       if (this.attributes) {
         this.el.attr(this.attributes);
       }
-      this.release(function() {
-        return this.el.remove();
-      });
       if (!this.events) {
         this.events = this.constructor.events;
       }
@@ -624,12 +621,10 @@
       }
       Controller.__super__.constructor.apply(this, arguments);
     }
-    Controller.prototype.release = function(callback) {
-      if (typeof callback === 'function') {
-        return this.bind('release', callback);
-      } else {
-        return this.trigger('release');
-      }
+    Controller.prototype.release = function() {
+      this.trigger('release');
+      this.el.remove();
+      return this.unbind();
     };
     Controller.prototype.$ = function(selector) {
       return $(selector, this.el);
@@ -639,8 +634,20 @@
       _results = [];
       for (key in events) {
         method = events[key];
-        if (typeof method !== 'function') {
-          method = this.proxy(this[method]);
+        if (typeof method === 'function') {
+          method = __bind(function(method) {
+            return __bind(function() {
+              method.apply(this, arguments);
+              return true;
+            }, this);
+          }, this)(method);
+        } else {
+          method = __bind(function(method) {
+            return __bind(function() {
+              this[method].apply(this, arguments);
+              return true;
+            }, this);
+          }, this)(method);
         }
         match = key.match(this.eventSplitter);
         eventName = match[1];
@@ -717,14 +724,12 @@
   $ = (typeof window !== "undefined" && window !== null ? window.jQuery : void 0) || (typeof window !== "undefined" && window !== null ? window.Zepto : void 0) || function(element) {
     return element;
   };
-  if (typeof Object.create !== 'function') {
-    Object.create = function(o) {
-      var Func;
-      Func = function() {};
-      Func.prototype = o;
-      return new Func();
-    };
-  }
+  createObject = Object.create || function(o) {
+    var Func;
+    Func = function() {};
+    Func.prototype = o;
+    return new Func();
+  };
   isArray = function(value) {
     return Object.prototype.toString.call(value) === '[object Array]';
   };
