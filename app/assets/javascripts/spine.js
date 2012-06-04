@@ -212,7 +212,6 @@
         this.records[record.id] = record;
         this.crecords[record.cid] = record;
       }
-      this.resetIdCounter();
       this.trigger('refresh', this.cloneArray(records));
       return this;
     };
@@ -366,25 +365,6 @@
       return _results;
     };
     Model.idCounter = 0;
-    Model.resetIdCounter = function() {
-      var ids, lastID, model;
-      ids = ((function() {
-        var _i, _len, _ref, _results;
-        _ref = this.all();
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          model = _ref[_i];
-          _results.push(model.id);
-        }
-        return _results;
-      }).call(this)).sort(function(a, b) {
-        return a > b;
-      });
-      lastID = ids[ids.length - 1];
-      lastID = (lastID != null ? typeof lastID.replace === "function" ? lastID.replace(/^c-/, '') : void 0 : void 0) || lastID;
-      lastID = parseInt(lastID, 10);
-      return this.idCounter = (lastID + 1) || 0;
-    };
     Model.uid = function(prefix) {
       if (prefix == null) {
         prefix = '';
@@ -396,7 +376,7 @@
       if (atts) {
         this.load(atts);
       }
-      this.cid || (this.cid = this.constructor.uid('c-'));
+      this.cid = this.constructor.uid('c-');
     }
     Model.prototype.isNew = function() {
       return !this.exists();
@@ -794,9 +774,6 @@
     }).call(this);
     Instance.configure.apply(Instance, [name].concat(__slice.call(attributes)));
     return Instance;
-  };
-  Module.init = Controller.init = Model.init = function(a1, a2, a3, a4, a5) {
-    return new this(a1, a2, a3, a4, a5);
   };
   Spine.Class = Module;
 }).call(this);
