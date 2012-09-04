@@ -1,15 +1,14 @@
 (function() {
-  var Include;
-    if (typeof Spine !== "undefined" && Spine !== null) {
-    Spine;
-  } else {
-    Spine = require('spine');
-  };
+  var Include, Spine;
+
+  Spine = this.Spine || require('spine');
+
   Include = {
     savePrevious: function() {
       return this.constructor.records[this.id].previousAttributes = this.attributes();
     }
   };
+
   Spine.Model.Dirty = {
     extended: function() {
       this.bind('refresh', function() {
@@ -35,4 +34,5 @@
       return this.include(Include);
     }
   };
+
 }).call(this);

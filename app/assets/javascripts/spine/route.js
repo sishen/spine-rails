@@ -1,30 +1,38 @@
 (function() {
-  var $, Spine, escapeRegExp, hashStrip, namedParam, splatParam;
-  var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
-    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor;
-    child.__super__ = parent.prototype;
-    return child;
-  }, __slice = Array.prototype.slice;
+  var $, Spine, escapeRegExp, hashStrip, namedParam, splatParam,
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
+
   Spine = this.Spine || require('spine');
+
   $ = Spine.$;
+
   hashStrip = /^#*/;
+
   namedParam = /:([\w\d]+)/g;
+
   splatParam = /\*([\w\d]+)/g;
+
   escapeRegExp = /[-[\]{}()+?.,\\^$|#\s]/g;
-  Spine.Route = (function() {
+
+  Spine.Route = (function(_super) {
     var _ref;
-    __extends(Route, Spine.Module);
+
+    __extends(Route, _super);
+
     Route.extend(Spine.Events);
+
     Route.historySupport = ((_ref = window.history) != null ? _ref.pushState : void 0) != null;
+
     Route.routes = [];
+
     Route.options = {
       trigger: true,
       history: false,
       shim: false
     };
+
     Route.add = function(path, callback) {
       var key, value, _results;
       if (typeof path === 'object' && !(path instanceof RegExp)) {
@@ -38,6 +46,7 @@
         return this.routes.push(new this(path, callback));
       }
     };
+
     Route.setup = function(options) {
       if (options == null) {
         options = {};
@@ -56,13 +65,18 @@
       }
       return this.change();
     };
+
     Route.unbind = function() {
+      if (this.options.shim) {
+        return;
+      }
       if (this.history) {
         return $(window).unbind('popstate', this.change);
       } else {
         return $(window).unbind('hashchange', this.change);
       }
     };
+
     Route.navigate = function() {
       var args, lastArg, options, path;
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
@@ -92,6 +106,7 @@
         return window.location.hash = this.path;
       }
     };
+
     Route.getPath = function() {
       var path;
       path = window.location.pathname;
@@ -100,35 +115,41 @@
       }
       return path;
     };
+
     Route.getHash = function() {
       return window.location.hash;
     };
+
     Route.getFragment = function() {
       return this.getHash().replace(hashStrip, '');
     };
+
     Route.getHost = function() {
       return (document.location + '').replace(this.getPath() + this.getHash(), '');
     };
+
     Route.change = function() {
       var path;
-      path = this.getFragment() !== '' ? this.getFragment() : this.getPath();
+      path = this.history ? this.getPath() : this.getFragment();
       if (path === this.path) {
         return;
       }
       this.path = path;
       return this.matchRoute(this.path);
     };
+
     Route.matchRoute = function(path, options) {
-      var route, _i, _len, _ref2;
-      _ref2 = this.routes;
-      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
-        route = _ref2[_i];
+      var route, _i, _len, _ref1;
+      _ref1 = this.routes;
+      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+        route = _ref1[_i];
         if (route.match(path, options)) {
           this.trigger('change', route, path);
           return route;
         }
       }
     };
+
     function Route(path, callback) {
       var match;
       this.path = path;
@@ -149,8 +170,9 @@
         this.route = path;
       }
     }
+
     Route.prototype.match = function(path, options) {
-      var i, match, param, params, _len;
+      var i, match, param, params, _i, _len;
       if (options == null) {
         options = {};
       }
@@ -161,16 +183,20 @@
       options.match = match;
       params = match.slice(1);
       if (this.names.length) {
-        for (i = 0, _len = params.length; i < _len; i++) {
+        for (i = _i = 0, _len = params.length; _i < _len; i = ++_i) {
           param = params[i];
           options[this.names[i]] = param;
         }
       }
       return this.callback.call(null, options) !== false;
     };
+
     return Route;
-  })();
+
+  })(Spine.Module);
+
   Spine.Route.change = Spine.Route.proxy(Spine.Route.change);
+
   Spine.Controller.include({
     route: function(path, callback) {
       return Spine.Route.add(path, this.proxy(callback));
@@ -188,7 +214,9 @@
       return Spine.Route.navigate.apply(Spine.Route, arguments);
     }
   });
+
   if (typeof module !== "undefined" && module !== null) {
     module.exports = Spine.Route;
   }
+
 }).call(this);

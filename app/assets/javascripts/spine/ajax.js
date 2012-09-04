@@ -1,23 +1,23 @@
 (function() {
-  var $, Ajax, Base, Collection, Extend, Include, Model, Singleton, Spine;
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; }, __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
-    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor;
-    child.__super__ = parent.prototype;
-    return child;
-  }, __slice = Array.prototype.slice;
+  var $, Ajax, Base, Collection, Extend, Include, Model, Queue, Singleton, Spine,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __slice = [].slice;
+
   Spine = this.Spine || require('spine');
+
   $ = Spine.$;
+
   Model = Spine.Model;
+
+  Queue = $({});
+
   Ajax = {
     getURL: function(object) {
       return object && (typeof object.url === "function" ? object.url() : void 0) || object.url;
     },
     enabled: true,
-    pending: false,
-    requests: [],
     disable: function(callback) {
       if (this.enabled) {
         this.enabled = false;
@@ -32,35 +32,22 @@
         return callback();
       }
     },
-    requestNext: function() {
-      var next;
-      next = this.requests.shift();
-      if (next) {
-        return this.request(next);
+    queue: function(request) {
+      if (request) {
+        return Queue.queue(request);
       } else {
-        return this.pending = false;
+        return Queue.queue();
       }
     },
-    request: function(callback) {
-      return (callback()).complete(__bind(function() {
-        return this.requestNext();
-      }, this));
-    },
-    queue: function(callback) {
-      if (!this.enabled) {
-        return;
-      }
-      if (this.pending) {
-        this.requests.push(callback);
-      } else {
-        this.pending = true;
-        this.request(callback);
-      }
-      return callback;
+    clearQueue: function() {
+      return this.queue([]);
     }
   };
+
   Base = (function() {
+
     function Base() {}
+
     Base.prototype.defaults = {
       contentType: 'application/json',
       dataType: 'json',
@@ -69,39 +56,82 @@
         'X-Requested-With': 'XMLHttpRequest'
       }
     };
+
+    Base.prototype.queue = Ajax.queue;
+
     Base.prototype.ajax = function(params, defaults) {
-      return $.ajax($.extend({}, this.defaults, defaults, params));
+      return $.ajax(this.ajaxSettings(params, defaults));
     };
-    Base.prototype.queue = function(callback) {
-      return Ajax.queue(callback);
+
+    Base.prototype.ajaxQueue = function(params, defaults) {
+      var deferred, jqXHR, promise, request, settings;
+      jqXHR = null;
+      deferred = $.Deferred();
+      promise = deferred.promise();
+      if (!Ajax.enabled) {
+        return promise;
+      }
+      settings = this.ajaxSettings(params, defaults);
+      request = function(next) {
+        return jqXHR = $.ajax(settings).done(deferred.resolve).fail(deferred.reject).then(next, next);
+      };
+      promise.abort = function(statusText) {
+        var index;
+        if (jqXHR) {
+          return jqXHR.abort(statusText);
+        }
+        index = $.inArray(request, this.queue());
+        if (index > -1) {
+          this.queue().splice(index, 1);
+        }
+        deferred.rejectWith(settings.context || settings, [promise, statusText, '']);
+        return promise;
+      };
+      this.queue(request);
+      return promise;
     };
+
+    Base.prototype.ajaxSettings = function(params, defaults) {
+      return $.extend({}, this.defaults, defaults, params);
+    };
+
     return Base;
+
   })();
-  Collection = (function() {
-    __extends(Collection, Base);
+
+  Collection = (function(_super) {
+
+    __extends(Collection, _super);
+
     function Collection(model) {
       this.model = model;
-      this.errorResponse = __bind(this.errorResponse, this);
+      this.failResponse = __bind(this.failResponse, this);
+
       this.recordsResponse = __bind(this.recordsResponse, this);
+
     }
+
     Collection.prototype.find = function(id, params) {
       var record;
       record = new this.model({
         id: id
       });
-      return this.ajax(params, {
+      return this.ajaxQueue(params, {
         type: 'GET',
         url: Ajax.getURL(record)
-      }).success(this.recordsResponse).error(this.errorResponse);
+      }).done(this.recordsResponse).fail(this.failResponse);
     };
+
     Collection.prototype.all = function(params) {
-      return this.ajax(params, {
+      return this.ajaxQueue(params, {
         type: 'GET',
         url: Ajax.getURL(this.model)
-      }).success(this.recordsResponse).error(this.errorResponse);
+      }).done(this.recordsResponse).fail(this.failResponse);
     };
+
     Collection.prototype.fetch = function(params, options) {
-      var id;
+      var id,
+        _this = this;
       if (params == null) {
         params = {};
       }
@@ -110,101 +140,120 @@
       }
       if (id = params.id) {
         delete params.id;
-        return this.find(id, params).success(__bind(function(record) {
-          return this.model.refresh(record, options);
-        }, this));
+        return this.find(id, params).done(function(record) {
+          return _this.model.refresh(record, options);
+        });
       } else {
-        return this.all(params).success(__bind(function(records) {
-          return this.model.refresh(records, options);
-        }, this));
+        return this.all(params).done(function(records) {
+          return _this.model.refresh(records, options);
+        });
       }
     };
+
     Collection.prototype.recordsResponse = function(data, status, xhr) {
       return this.model.trigger('ajaxSuccess', null, status, xhr);
     };
-    Collection.prototype.errorResponse = function(xhr, statusText, error) {
+
+    Collection.prototype.failResponse = function(xhr, statusText, error) {
       return this.model.trigger('ajaxError', null, xhr, statusText, error);
     };
+
     return Collection;
-  })();
-  Singleton = (function() {
-    __extends(Singleton, Base);
+
+  })(Base);
+
+  Singleton = (function(_super) {
+
+    __extends(Singleton, _super);
+
     function Singleton(record) {
       this.record = record;
-      this.errorResponse = __bind(this.errorResponse, this);
+      this.failResponse = __bind(this.failResponse, this);
+
       this.recordResponse = __bind(this.recordResponse, this);
+
       this.model = this.record.constructor;
     }
+
     Singleton.prototype.reload = function(params, options) {
-      return this.queue(__bind(function() {
-        return this.ajax(params, {
-          type: 'GET',
-          url: Ajax.getURL(this.record)
-        }).success(this.recordResponse(options)).error(this.errorResponse(options));
-      }, this));
+      return this.ajaxQueue(params, {
+        type: 'GET',
+        url: Ajax.getURL(this.record)
+      }).done(this.recordResponse(options)).fail(this.failResponse(options));
     };
+
     Singleton.prototype.create = function(params, options) {
-      return this.queue(__bind(function() {
-        return this.ajax(params, {
-          type: 'POST',
-          data: JSON.stringify(this.record),
-          url: Ajax.getURL(this.model)
-        }).success(this.recordResponse(options)).error(this.errorResponse(options));
-      }, this));
+      return this.ajaxQueue(params, {
+        type: 'POST',
+        data: JSON.stringify(this.record),
+        url: Ajax.getURL(this.model)
+      }).done(this.recordResponse(options)).fail(this.failResponse(options));
     };
+
     Singleton.prototype.update = function(params, options) {
-      return this.queue(__bind(function() {
-        return this.ajax(params, {
-          type: 'PUT',
-          data: JSON.stringify(this.record),
-          url: Ajax.getURL(this.record)
-        }).success(this.recordResponse(options)).error(this.errorResponse(options));
-      }, this));
+      return this.ajaxQueue(params, {
+        type: 'PUT',
+        data: JSON.stringify(this.record),
+        url: Ajax.getURL(this.record)
+      }).done(this.recordResponse(options)).fail(this.failResponse(options));
     };
+
     Singleton.prototype.destroy = function(params, options) {
-      return this.queue(__bind(function() {
-        return this.ajax(params, {
-          type: 'DELETE',
-          url: Ajax.getURL(this.record)
-        }).success(this.recordResponse(options)).error(this.errorResponse(options));
-      }, this));
+      return this.ajaxQueue(params, {
+        type: 'DELETE',
+        url: Ajax.getURL(this.record)
+      }).done(this.recordResponse(options)).fail(this.failResponse(options));
     };
+
     Singleton.prototype.recordResponse = function(options) {
+      var _this = this;
       if (options == null) {
         options = {};
       }
-      return __bind(function(data, status, xhr) {
-        var _ref;
+      return function(data, status, xhr) {
+        var _ref, _ref1;
         if (Spine.isBlank(data)) {
           data = false;
         } else {
-          data = this.model.fromJSON(data);
+          data = _this.model.fromJSON(data);
         }
-        Ajax.disable(__bind(function() {
+        Ajax.disable(function() {
           if (data) {
-            if (data.id && this.record.id !== data.id) {
-              this.record.changeID(data.id);
+            if (data.id && _this.record.id !== data.id) {
+              _this.record.changeID(data.id);
             }
-            return this.record.updateAttributes(data.attributes());
+            return _this.record.updateAttributes(data.attributes());
           }
-        }, this));
-        this.record.trigger('ajaxSuccess', data, status, xhr);
-        return (_ref = options.success) != null ? _ref.apply(this.record) : void 0;
-      }, this);
+        });
+        _this.record.trigger('ajaxSuccess', data, status, xhr);
+        if ((_ref = options.success) != null) {
+          _ref.apply(_this.record);
+        }
+        return (_ref1 = options.done) != null ? _ref1.apply(_this.record) : void 0;
+      };
     };
-    Singleton.prototype.errorResponse = function(options) {
+
+    Singleton.prototype.failResponse = function(options) {
+      var _this = this;
       if (options == null) {
         options = {};
       }
-      return __bind(function(xhr, statusText, error) {
-        var _ref;
-        this.record.trigger('ajaxError', xhr, statusText, error);
-        return (_ref = options.error) != null ? _ref.apply(this.record) : void 0;
-      }, this);
+      return function(xhr, statusText, error) {
+        var _ref, _ref1;
+        _this.record.trigger('ajaxError', xhr, statusText, error);
+        if ((_ref = options.error) != null) {
+          _ref.apply(_this.record);
+        }
+        return (_ref1 = options.fail) != null ? _ref1.apply(_this.record) : void 0;
+      };
     };
+
     return Singleton;
-  })();
+
+  })(Base);
+
   Model.host = '';
+
   Include = {
     ajax: function() {
       return new Singleton(this);
@@ -222,6 +271,7 @@
       return args.join('/');
     }
   };
+
   Extend = {
     ajax: function() {
       return new Collection(this);
@@ -238,6 +288,7 @@
       return args.join('/');
     }
   };
+
   Model.Ajax = {
     extended: function() {
       this.fetch(this.ajaxFetch);
@@ -259,15 +310,20 @@
       return record.ajax()[type](options.ajax, options);
     }
   };
+
   Model.Ajax.Methods = {
     extended: function() {
       this.extend(Extend);
       return this.include(Include);
     }
   };
+
   Ajax.defaults = Base.prototype.defaults;
+
   Spine.Ajax = Ajax;
+
   if (typeof module !== "undefined" && module !== null) {
     module.exports = Ajax;
   }
+
 }).call(this);
