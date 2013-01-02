@@ -41,28 +41,32 @@
       return true;
     },
     unbind: function(ev, callback) {
-      var cb, i, list, _i, _len, _ref;
+      var cb, evs, i, list, name, _i, _j, _len, _len1, _ref;
       if (!ev) {
         this._callbacks = {};
         return this;
       }
-      list = (_ref = this._callbacks) != null ? _ref[ev] : void 0;
-      if (!list) {
-        return this;
-      }
-      if (!callback) {
-        delete this._callbacks[ev];
-        return this;
-      }
-      for (i = _i = 0, _len = list.length; _i < _len; i = ++_i) {
-        cb = list[i];
-        if (!(cb === callback)) {
+      evs = ev.split(' ');
+      for (_i = 0, _len = evs.length; _i < _len; _i++) {
+        name = evs[_i];
+        list = (_ref = this._callbacks) != null ? _ref[name] : void 0;
+        if (!list) {
           continue;
         }
-        list = list.slice();
-        list.splice(i, 1);
-        this._callbacks[ev] = list;
-        break;
+        if (!callback) {
+          delete this._callbacks[name];
+          continue;
+        }
+        for (i = _j = 0, _len1 = list.length; _j < _len1; i = ++_j) {
+          cb = list[i];
+          if (!(cb === callback)) {
+            continue;
+          }
+          list = list.slice();
+          list.splice(i, 1);
+          this._callbacks[name] = list;
+          break;
+        }
       }
       return this;
     }
@@ -863,28 +867,28 @@
   Module.extend.call(Spine, Events);
 
   Module.create = Module.sub = Controller.create = Controller.sub = Model.sub = function(instances, statics) {
-    var result;
-    result = (function(_super) {
+    var Result;
+    Result = (function(_super) {
 
-      __extends(result, _super);
+      __extends(Result, _super);
 
-      function result() {
-        return result.__super__.constructor.apply(this, arguments);
+      function Result() {
+        return Result.__super__.constructor.apply(this, arguments);
       }
 
-      return result;
+      return Result;
 
     })(this);
     if (instances) {
-      result.include(instances);
+      Result.include(instances);
     }
     if (statics) {
-      result.extend(statics);
+      Result.extend(statics);
     }
-    if (typeof result.unbind === "function") {
-      result.unbind();
+    if (typeof Result.unbind === "function") {
+      Result.unbind();
     }
-    return result;
+    return Result;
   };
 
   Model.setup = function(name, attributes) {
