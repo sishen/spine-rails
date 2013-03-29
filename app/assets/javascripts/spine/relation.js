@@ -100,17 +100,9 @@
       return this.model.trigger('refresh', this.model.cloneArray(records));
     };
 
-    Collection.prototype.create = function(record, options) {
+    Collection.prototype.create = function(record) {
       record[this.fkey] = this.record.id;
-      return this.model.create(record, options);
-    };
-
-    Collection.prototype.add = function(record, options) {
-      return record.updateAttribute(this.fkey, this.record.id, options);
-    };
-
-    Collection.prototype.remove = function(record, options) {
-      return record.updateAttribute(this.fkey, null, options);
+      return this.model.create(record);
     };
 
     Collection.prototype.associated = function(record) {
@@ -137,11 +129,7 @@
     }
 
     Instance.prototype.exists = function() {
-      if (this.record[this.fkey]) {
-        return this.model.exists(this.record[this.fkey]);
-      } else {
-        return false;
-      }
+      return this.record[this.fkey] && this.model.exists(this.record[this.fkey]);
     };
 
     Instance.prototype.update = function(value) {
@@ -280,7 +268,3 @@
   Spine.Instance = Instance;
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=relation.map
-*/

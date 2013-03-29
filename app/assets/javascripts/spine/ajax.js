@@ -95,6 +95,7 @@
     function Base() {}
 
     Base.prototype.defaults = {
+      contentType: 'application/json',
       dataType: 'json',
       processData: false,
       headers: {
@@ -228,7 +229,6 @@
     Singleton.prototype.create = function(params, options) {
       return this.ajaxQueue(params, {
         type: 'POST',
-        contentType: 'application/json',
         data: JSON.stringify(this.record),
         url: Ajax.getCollectionURL(this.record)
       }).done(this.recordResponse(options)).fail(this.failResponse(options));
@@ -237,7 +237,6 @@
     Singleton.prototype.update = function(params, options) {
       return this.ajaxQueue(params, {
         type: 'PUT',
-        contentType: 'application/json',
         data: JSON.stringify(this.record),
         url: Ajax.getURL(this.record)
       }).done(this.recordResponse(options)).fail(this.failResponse(options));
@@ -367,7 +366,3 @@
   }
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=ajax.map
-*/

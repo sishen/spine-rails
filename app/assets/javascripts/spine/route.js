@@ -116,26 +116,29 @@
     Route.getPath = function() {
       var path;
 
-      if (this.history) {
-        path = window.location.pathname;
-        if (path.substr(0, 1) !== '/') {
-          path = '/' + path;
-        }
-      } else {
-        path = window.location.hash;
-        path = path.replace(hashStrip, '');
+      path = window.location.pathname;
+      if (path.substr(0, 1) !== '/') {
+        path = '/' + path;
       }
       return path;
     };
 
+    Route.getHash = function() {
+      return window.location.hash;
+    };
+
+    Route.getFragment = function() {
+      return this.getHash().replace(hashStrip, '');
+    };
+
     Route.getHost = function() {
-      return "" + window.location.protocol + "//" + window.location.host;
+      return (document.location + '').replace(this.getPath() + this.getHash(), '');
     };
 
     Route.change = function() {
       var path;
 
-      path = this.getPath();
+      path = this.history ? this.getPath() : this.getFragment();
       if (path === this.path) {
         return;
       }
@@ -230,7 +233,3 @@
   }
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=route.map
-*/

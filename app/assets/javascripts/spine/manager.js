@@ -116,9 +116,6 @@
       _ref = this.controllers;
       for (key in _ref) {
         value = _ref[key];
-        if (this[key] != null) {
-          throw Error("'@" + key + "' already assigned - choose a different name");
-        }
         this[key] = new value({
           stack: this
         });
@@ -165,7 +162,3 @@
   }
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=manager.map
-*/

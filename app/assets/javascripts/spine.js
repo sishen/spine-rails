@@ -43,34 +43,6 @@
       }
       return true;
     },
-    listenTo: function(obj, ev, callback) {
-      obj.bind(ev, callback);
-      this.listeningTo || (this.listeningTo = []);
-      this.listeningTo.push(obj);
-      return this;
-    },
-    listenToOnce: function(obj, ev, callback) {
-      obj.one(ev, callback);
-      return this;
-    },
-    stopListening: function(obj, ev, callback) {
-      var idx, _i, _len, _ref;
-
-      if (obj) {
-        obj.unbind(ev, callback);
-        idx = this.listeningTo.indexOf(obj);
-        if (idx !== -1) {
-          return this.listeningTo.splice(idx, 1);
-        }
-      } else {
-        _ref = this.listeningTo;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          obj = _ref[_i];
-          obj.unbind();
-        }
-        return this.listeningTo = void 0;
-      }
-    },
     unbind: function(ev, callback) {
       var cb, evs, i, list, name, _i, _j, _len, _len1, _ref;
 
@@ -229,17 +201,35 @@
     Model.find = function(id) {
       var record;
 
-      record = this.exists(id);
+      record = this.records[id];
+      if (!record && ("" + id).match(/c-\d+/)) {
+        return this.findCID(id);
+      }
       if (!record) {
         throw new Error("\"" + this.className + "\" model could not find a record for the ID \"" + id + "\"");
       }
-      return record;
+      return record.clone();
+    };
+
+    Model.findCID = function(cid) {
+      var record;
+
+      record = this.crecords[cid];
+      if (!record) {
+        throw new Error("\"" + this.className + "\" model could not find a record for the ID \"" + id + "\"");
+      }
+      return record.clone();
     };
 
     Model.exists = function(id) {
-      var _ref, _ref1;
+      var e;
 
-      return (_ref = (_ref1 = this.records[id]) != null ? _ref1 : this.crecords[id]) != null ? _ref.clone() : void 0;
+      try {
+        return this.find(id);
+      } catch (_error) {
+        e = _error;
+        return false;
+      }
     };
 
     Model.refresh = function(values, options) {
@@ -484,12 +474,9 @@
     Model.prototype.load = function(atts) {
       var key, value;
 
-      if (atts.id) {
-        this.id = atts.id;
-      }
       for (key in atts) {
         value = atts[key];
-        if (atts.hasOwnProperty(key) && typeof this[key] === 'function') {
+        if (typeof this[key] === 'function') {
           this[key](value);
         } else {
           this[key] = value;
@@ -560,11 +547,8 @@
     };
 
     Model.prototype.updateAttribute = function(name, value, options) {
-      var atts;
-
-      atts = {};
-      atts[name] = value;
-      return this.updateAttributes(atts, options);
+      this[name] = value;
+      return this.save(options);
     };
 
     Model.prototype.updateAttributes = function(atts, options) {
@@ -592,9 +576,6 @@
       this.destroyed = true;
       this.trigger('destroy', options);
       this.trigger('change', 'destroy', options);
-      if (this.listeningTo) {
-        this.stopListening();
-      }
       this.unbind();
       return this;
     };
@@ -647,7 +628,7 @@
     };
 
     Model.prototype.exists = function() {
-      return this.constructor.exists(this.id);
+      return this.id && this.id in this.constructor.records;
     };
 
     Model.prototype.update = function(options) {
@@ -679,7 +660,7 @@
     };
 
     Model.prototype.bind = function(events, callback) {
-      var binder, singleEvent, _fn, _i, _len, _ref,
+      var binder, unbinder,
         _this = this;
 
       this.constructor.bind(events, binder = function(record) {
@@ -687,35 +668,21 @@
           return callback.apply(_this, arguments);
         }
       });
-      _ref = events.split(' ');
-      _fn = function(singleEvent) {
-        var unbinder;
-
-        return _this.constructor.bind("unbind", unbinder = function(record, event, cb) {
-          if (record && _this.eql(record)) {
-            if (event && event !== singleEvent) {
-              return;
-            }
-            if (cb && cb !== callback) {
-              return;
-            }
-            _this.constructor.unbind(singleEvent, binder);
-            return _this.constructor.unbind("unbind", unbinder);
-          }
-        });
-      };
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        singleEvent = _ref[_i];
-        _fn(singleEvent);
-      }
-      return this;
+      this.constructor.bind('unbind', unbinder = function(record) {
+        if (record && _this.eql(record)) {
+          _this.constructor.unbind(events, binder);
+          return _this.constructor.unbind('unbind', unbinder);
+        }
+      });
+      return binder;
     };
 
     Model.prototype.one = function(events, callback) {
-      var _this = this;
+      var binder,
+        _this = this;
 
-      return this.bind(events, function() {
-        _this.unbind(events, arguments.callee);
+      return binder = this.bind(events, function() {
+        _this.constructor.unbind(events, binder);
         return callback.apply(_this, arguments);
       });
     };
@@ -728,63 +695,13 @@
       return (_ref = this.constructor).trigger.apply(_ref, args);
     };
 
-    Model.prototype.listenTo = function(obj, events, callback) {
-      obj.bind(events, callback);
-      this.listeningTo || (this.listeningTo = []);
-      return this.listeningTo.push(obj);
-    };
-
-    Model.prototype.listenToOnce = function(obj, events, callback) {
-      var _this = this;
-
-      return obj.bind(events, function() {
-        obj.unbind(events, arguments.callee);
-        return callback.apply(obj, arguments);
-      });
-    };
-
-    Model.prototype.stopListening = function(obj, events, callback) {
-      var idx, _i, _len, _ref;
-
-      if (obj) {
-        obj.unbind(events, callback);
-        idx = this.listeningTo.indexOf(obj);
-        if (idx !== -1) {
-          return this.listeningTo.splice(idx, 1);
-        }
-      } else {
-        _ref = this.listeningTo;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          obj = _ref[_i];
-          obj.unbind();
-        }
-        return this.listeningTo = void 0;
-      }
-    };
-
-    Model.prototype.unbind = function(events, callback) {
-      var event, _i, _len, _ref, _results;
-
-      if (events) {
-        _ref = events.split(' ');
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          event = _ref[_i];
-          _results.push(this.trigger('unbind', event, callback));
-        }
-        return _results;
-      } else {
-        return this.trigger('unbind');
-      }
+    Model.prototype.unbind = function() {
+      return this.trigger('unbind');
     };
 
     return Model;
 
   })(Module);
-
-  Model.prototype.on = Model.prototype.bind;
-
-  Model.prototype.off = Model.prototype.unbind;
 
   Controller = (function(_super) {
     __extends(Controller, _super);
@@ -799,7 +716,7 @@
 
     function Controller(options) {
       this.release = __bind(this.release, this);
-      var context, key, parent_prototype, value, _ref;
+      var key, value, _ref;
 
       this.options = options;
       _ref = this.options;
@@ -824,16 +741,6 @@
       if (!this.elements) {
         this.elements = this.constructor.elements;
       }
-      context = this;
-      while (parent_prototype = context.constructor.__super__) {
-        if (parent_prototype.events) {
-          this.events = $.extend({}, parent_prototype.events, this.events);
-        }
-        if (parent_prototype.elements) {
-          this.elements = $.extend({}, parent_prototype.elements, this.elements);
-        }
-        context = parent_prototype;
-      }
       if (this.events) {
         this.delegateEvents(this.events);
       }
@@ -844,12 +751,9 @@
     }
 
     Controller.prototype.release = function() {
-      this.trigger('release', this);
+      this.trigger('release');
       this.el.remove();
-      this.unbind();
-      if (this.listeningTo) {
-        return this.stopListening();
-      }
+      return this.unbind();
     };
 
     Controller.prototype.$ = function(selector) {
@@ -1011,7 +915,7 @@
     module.exports = Spine;
   }
 
-  Spine.version = '1.0.9';
+  Spine.version = '1.0.8';
 
   Spine.isArray = isArray;
 
@@ -1081,7 +985,3 @@
   Spine.Class = Module;
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=spine.map
-*/
