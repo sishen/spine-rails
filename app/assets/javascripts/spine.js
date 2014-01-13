@@ -1081,7 +1081,3 @@
   Spine.Class = Module;
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=spine.map
-*/

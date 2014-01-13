@@ -280,7 +280,3 @@
   Spine.Instance = Instance;
 
 }).call(this);
-
-/*
-//@ sourceMappingURL=relation.map
-*/
